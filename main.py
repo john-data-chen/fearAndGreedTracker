@@ -1,29 +1,37 @@
 import requests
 from fake_useragent import UserAgent
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
 
-lineNotifyToken = "XXXXXX"
+url = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata'
+spreadsheet_key = ''  # in google sheet url
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    url = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata'
+def crawler(url):
     ua = UserAgent()
     headers = {'User-Agent': ua.random}
     res = requests.get(url, headers=headers)
     # print(res.json())
     nowScore = int(res.json()['fear_and_greed']['score'])
     nowRating = str(res.json()['fear_and_greed']['rating'])
-    pre1WeekRating = int(res.json()['fear_and_greed']['previous_1_week'])
-    pre1MonthRating = int(res.json()['fear_and_greed']['previous_1_month'])
-    msg = '\nType: S&P500\nNow score: ' + str(nowScore) + ' \\ ' + str(
-        nowRating) + '\n' + 'Last Week Score: ' + str(
-            pre1WeekRating) + '\n' + 'Last Month Score: ' + str(
-                pre1MonthRating)
 
-    # print(data)
+    return {'nowScore': nowScore, 'nowRating': nowRating}
 
-    if nowScore <= 25 or nowScore >= 75:
-        headers = {'Authorization': 'Bearer ' + lineNotifyToken}
-        data = {'message': msg}
-        requests.post('https://notify-api.line.me/api/notify',
-                      headers=headers,
-                      data=data)
+
+def gsheet(result):
+    scopes = ['https://spreadsheets.google.com/feeds']
+    credentials = ServiceAccountCredentials.from_json_keyfile_name(
+        'credentials.json', scopes)
+    client = gspread.authorize(credentials)
+    sheet = client.open_by_key(spreadsheet_key).sheet1
+    previousScore = int(sheet.acell('B2').value)
+    print(previousScore)
+    change = (result['nowScore'] - previousScore) / result['nowScore']
+    # date score Indicator change
+    date = datetime.now().strftime('%Y-%m-%d')
+    values = [date, result['nowScore'], result['nowRating'], change]
+    sheet.insert_row(values, 2)
+
+if __name__ == '__main__':
+    result = crawler(url)
+    gsheet(result)
