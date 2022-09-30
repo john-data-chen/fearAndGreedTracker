@@ -25,7 +25,6 @@ def gsheet(result):
     client = gspread.authorize(credentials)
     sheet = client.open_by_key(spreadsheet_key).sheet1
     previousScore = int(sheet.acell('B2').value)
-    print(previousScore)
     change = (result['nowScore'] - previousScore) / result['nowScore']
     # date score Indicator change
     date = datetime.now().strftime('%Y-%m-%d')
